@@ -67,7 +67,7 @@ cp /config/fail2ban/jail.local /etc/fail2ban/jail.local
 	cp /defaults/ssl.conf /config/nginx/ssl.conf
 
 # check to make sure DNSPLUGIN is selected if dns validation is used
-[[ "$VALIDATION" = "dns" ]] && [[ ! "$DNSPLUGIN" =~ ^(cloudflare|cloudxns|digitalocean|dnsimple|dnsmadeeasy|google|luadns|nsone|rfc2136|route53)$ ]] && \
+[[ "$VALIDATION" = "dns" ]] && [[ ! "$DNSPLUGIN" =~ ^(cloudflare|cloudxns|digitalocean|dnsimple|dnsmadeeasy|google|luadns|nsone|rfc2136|route53|ovh)$ ]] && \
   echo "Please set the DNSPLUGIN variable to a valid plugin name. See docker info for more details." && \
   sleep infinity
 
@@ -156,12 +156,23 @@ else
   EMAILPARAM="--register-unsafely-without-email"
 fi
 
+
+
+
 # setting the validation method to use
 if [ "$VALIDATION" = "dns" ]; then
-  if [ "$DNSPLUGIN" = "route53" ]; then
-    PREFCHAL="--dns-${DNSPLUGIN} --manual-public-ip-logging-ok"
+  if [ ! -z "$DNSPROPAGATION"  ]; then
+    echo "setting DNS  propagate timeout "
   else
-    PREFCHAL="--dns-${DNSPLUGIN} --dns-${DNSPLUGIN}-credentials /config/dns-conf/${DNSPLUGIN}.ini --manual-public-ip-logging-ok"
+    echo "setting default DNS  propagate timeout "
+    export DNSPROPAGATION="30"
+  fi
+
+
+  if [ "$DNSPLUGIN" = "route53" ]; then
+    PREFCHAL="--dns-${DNSPLUGIN} --manual-public-ip-logging-ok --dns-${DNSPLUGIN}-propagation-seconds ${DNSPROPAGATION}"
+  else
+    PREFCHAL="--dns-${DNSPLUGIN} --dns-${DNSPLUGIN}-credentials /config/dns-conf/${DNSPLUGIN}.ini --manual-public-ip-logging-ok --dns-${DNSPLUGIN}-propagation-seconds ${DNSPROPAGATION}"
   fi
   echo "${VALIDATION} validation via ${DNSPLUGIN} plugin is selected"
 elif [ "$VALIDATION" = "tls-sni" ]; then
